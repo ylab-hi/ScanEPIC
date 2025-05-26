@@ -1057,10 +1057,10 @@ def main(input_,
         pass
     pretty_print(f'Processing {n_bams} samples')
     for i in range(n_bams):
-        bam_name = bamlist.iloc[i][0]
-        bam = os.path.dirname(input_) + '/' + bam_name
-        sample_id = bamlist.iloc[i][1]
-        group = bamlist.iloc[i][2]
+        bam_name = bamlist.iloc[i, 0]
+        bam = os.path.join(os.path.dirname(input_) if os.path.dirname(input_) else '.', bam_name)
+        sample_id = bamlist.iloc[i, 1]
+        group = bamlist.iloc[i, 2]
 
         # process cell type data
         cell_types = pd.read_csv(cell_types_fn, sep = '\t')
