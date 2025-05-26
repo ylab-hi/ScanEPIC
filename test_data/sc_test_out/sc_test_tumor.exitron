@@ -1,0 +1,5 @@
+chrom	start	end	strand	name	gene_symbol	region	splice_site	length	alignment50	read_total	cell_type	exitron_mols	unique_mols	exitron_cells_not_found	pso	pairwise_z_test_pvals	meta_pval	
+chr11	119094261	119094460	-	H2AX119094261119094460	H2AX	3'UTR	GT-AG	198	0.48	7	blood	0	0	0.14286	0.0	1.0,1.0,1.0,1.0	1.0
+chr11	119094261	119094460	-	H2AX119094261119094460	H2AX	3'UTR	GT-AG	198	0.48	7	lung_cell	1	9	0.14286	0.1111111111111111	1.0,1.0,0.92757,1.0	0.99993
+chr11	119094261	119094460	-	H2AX119094261119094460	H2AX	3'UTR	GT-AG	198	0.48	7	immune	2	20	0.14286	0.1	1.0,0.92757,1.0,1.0	0.99993
+chr11	119094261	119094460	-	H2AX119094261119094460	H2AX	3'UTR	GT-AG	198	0.48	7	stem_cell	0	0	0.14286	0.0	1.0,1.0,1.0,1.0	1.0
