@@ -30,7 +30,7 @@ conda install -c conda-forge click biopython cython
 pip install liqa
 
 # Clone and install ScanEPIC
-git clone https://github.com/yourusername/scanepic.git
+git clone git@github.com:ylab-hi/ScanEPIC.git
 cd scanepic
 pip install -e .
 ```
