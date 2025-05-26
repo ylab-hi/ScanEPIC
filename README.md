@@ -88,10 +88,14 @@ scanepic extract single \
 ### Required Files
 - **BAM files**: Aligned RNA-seq reads with index (.bai)
 - **Genome FASTA**: Reference genome sequence with index (.fai)
-- **GTF annotation**: Gene annotation file (must be bgzip compressed and tabix indexed)
+- **GTF annotation**: Gene annotation file (must be bgzip compressed and tabix indexed). the `gffutils` package will create a database file when ScanEPIC runs for the first time. This may take ~20 minutes but will only need to be done once. 
 
 ### File Preparation
 ```bash
+
+# If needed, sort your GTF annotation
+awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k4,4n -k5,5n"}' in.gtf > out_sorted.gtf
+
 # Compress and index GTF file
 bgzip annotation.gtf
 tabix -p gff annotation.gtf.gz
