@@ -1086,7 +1086,7 @@ def main(input_,
     # For each exitron found in at least one sample, calculate exitron_mols and unique_mol for
     #   each sample (those who have the exitron have already been calculated)
     #=============================================================================
-    pretty_print(f'Preping differential splicing between cell types.')
+    pretty_print(f'Preping splicing summary between cell types.')
     # pretty_print('here')
     # # exitron_mols_by_group is a dict with keys group, whose values are dictionaries with keys exitron
     # exitron_mols_by_group = defaultdict(dict)
@@ -1143,7 +1143,7 @@ def main(input_,
                 chrm = exitrons_all_samples[exitron_name][0]['chrom']
                 start = exitrons_all_samples[exitron_name][0]['start']
                 end = exitrons_all_samples[exitron_name][0]['end']
-                bam = os.path.dirname(input_) + '/' + bam_name
+                bam = os.path.join(os.path.dirname(input_) if os.path.dirname(input_) else '.', bam_name)
                 bamfile = pysam.AlignmentFile(bam, 'rb')
                 # for each cell type, get unique mols.
                 for cell_type in cell_type_names:
