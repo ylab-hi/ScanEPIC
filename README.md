@@ -63,6 +63,16 @@ scanepic extract long \
 ```
 
 ### Single-cell RNA-seq
+
+NOTE: The scRNA module takes as input a list of BAM files (path to BAM file on each line). If an exitron is detected in any BAM file, it will also be quantified in the BAM files where the exitron was not detected (for downstream analysis). Also required is a TSV file with three columns:
+
+| cells | sample_id | cell_group |
+|--------|-------------|-------------|
+| AACGGTACAAAAGC-1 | BT1249 | immune | 
+| AACTCGGATCGCCT-1 | BT1301 | cancer |
+| AAGAAGACACTGGT-1 | BT1300 | blood |
+
+
 ```bash
 scanepic extract single \
     -i bam_list.txt \
