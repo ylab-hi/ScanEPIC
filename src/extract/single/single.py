@@ -1165,7 +1165,7 @@ def main(input_,
     #=============================================================================
 
     # pretty_print(res)
-    out_file_name = f'{out}/exitron_differential_splicing_prep.tsv'
+    out_file_name = f'{out}/exitron_splicing_summary.tsv'
     pretty_print(f'Done. Writing to file {out_file_name}')
 
     with open(out_file_name, 'w') as out:
