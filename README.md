@@ -1,4 +1,4 @@
-[![PEP8](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://www.python.org/dev/peps/pep-0008/) [![License](https://img.shields.io/pypi/l/scanexitronlr)](https://opensource.org/licenses/MIT "License")
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15556565.svg)](https://doi.org/10.5281/zenodo.15556565) [![PEP8](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://www.python.org/dev/peps/pep-0008/) [![License](https://img.shields.io/pypi/l/scanexitronlr)](https://opensource.org/licenses/MIT "License") 
 
 
 # ScanEPIC
@@ -8,6 +8,8 @@ ScanEPIC (Scan **E**xitron **P**latform **I**ntegration **C**aller) is a bioinfo
 ## Overview
 
 Exitrons are novel intronic regions with both splice sites contained within a single annotated exon, effectively mimicking genomic deletions. ScanEPIC implements stringent filtering criteria to distinguish genuine exitron splicing events from technical artifacts such as those arising from reverse transcription slippage during library preparation.
+
+Typical runtime is around ~10 minutes using 4 cores on an average sized RNA-seq experiment.
 
 
 ## Installation
@@ -133,7 +135,42 @@ ScanEPIC produces tab-separated files containing:
 | rt_repeat | RT-PCR repeat content |
 
 
+## Test Data
 
+ScanEPIC includes test datasets (generated using gencode v37) to verify installation and demonstrate usage:
+
+### Short-read RNA-seq Test
+```bash
+scanepic extract short \
+    -i test_data/test_data.bam \
+    -g hg38.fa \
+    -r annotation.gtf.gz \
+    -o test_output_short.exitron \
+    --cores 4
+```
+
+### Long-read RNA-seq Test
+```bash
+scanepic extract long \
+    -i test_data/long_test_data.bam \
+    -g hg38.fa \
+    -r annotation.gtf.gz \
+    -o test_output_long.exitron \
+    --cores 4
+```
+
+### Single-cell RNA-seq Test
+```bash
+scanepic extract single \
+    -i test_data/sc_test_bam_list.txt \
+    -t test_data/sc_test_cell_types.tsv \
+    -g hg38.fa \
+    -r annotation.gtf.gz \
+    -o test_output_sc \
+    --cores 4
+```
+
+**Note**: The test BAM files are provided, but you must supply your own reference genome (hg38.fa) and annotation files (annotation.gtf.gz).
 
 ## Citation
 
@@ -144,6 +181,7 @@ If you use ScanEPIC in your research, please cite:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
 
 ## Support
 
