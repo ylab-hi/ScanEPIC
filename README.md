@@ -66,7 +66,16 @@ scanepic extract long \
 
 ### Single-cell RNA-seq
 
-NOTE: The scRNA module takes as input a list of BAM files (path to BAM file on each line). If an exitron is detected in any BAM file, it will also be quantified in the BAM files where the exitron was not detected (for downstream analysis). Also required is a TSV file with three columns, e.g.:
+**NOTE**: The scRNA module takes as input a list of BAM files in the following format:
+
+| bam | sample_id | group |
+|--------|-------------|-------------|
+| sc_test_normal.bam | BT1293 | g1 | 
+| sc_test_tumor.bam | BT1301 | g2 |
+
+where the `bam` column is a path to the BAM file. `sample_id` will be used to identify sample names. The `group` column can be used for downstream analysis.
+
+Also required is a TSV file with three columns which identify the cell barcode and its corresponding cell group:
 
 | cells | sample_id | cell_group |
 |--------|-------------|-------------|
@@ -74,10 +83,11 @@ NOTE: The scRNA module takes as input a list of BAM files (path to BAM file on e
 | AACTCGGATCGCCT-1 | BT1301 | cancer |
 | AAGAAGACACTGGT-1 | BT1300 | blood |
 
+Make sure the columns `sample_id` in both files matches (i.e. cells from `sample_id` are found in the corresponding BAM file). For examples of these files, see `test_data` folder. Example command:
 
 ```bash
 scanepic extract single \
-    -i bam_list.txt \
+    -i bam_list.tsv \
     -t cell_types.tsv \
     -g genome.fa \
     -r annotation.gtf.gz \
@@ -168,14 +178,14 @@ with the usual scRNA alignment pipelines.
 
 ## Test Data
 
-ScanEPIC includes test datasets (generated using gencode v37) to verify installation and demonstrate usage:
+ScanEPIC includes test datasets to verify installation and demonstrate usage. You can download GENCODE v37 annotations that were processed by the instructions above here: [https://doi.org/10.5281/zenodo.15724292](https://doi.org/10.5281/zenodo.15724292).
 
 ### Short-read RNA-seq Test
 ```bash
 scanepic extract short \
     -i test_data/test_data.bam \
     -g hg38.fa \
-    -r annotation.gtf.gz \
+    -r gencode.v37.annotation.sorted.gtf.gz \
     -o test_output_short.exitron \
     --cores 4
 ```
@@ -185,7 +195,7 @@ scanepic extract short \
 scanepic extract long \
     -i test_data/long_test_data.bam \
     -g hg38.fa \
-    -r annotation.gtf.gz \
+    -r gencode.v37.annotation.sorted.gtf.gz \
     -o test_output_long.exitron \
     --cores 4
 ```
@@ -196,12 +206,11 @@ scanepic extract single \
     -i test_data/sc_test_bam_list.txt \
     -t test_data/sc_test_cell_types.tsv \
     -g hg38.fa \
-    -r annotation.gtf.gz \
+    -r gencode.v37.annotation.sorted.gtf.gz \
     -o test_output_sc \
     --cores 4
 ```
 
-**Note**: The test BAM files are provided, but you must supply your own reference genome (hg38.fa) and annotation files (annotation.gtf.gz).
 
 ## Citation
 
