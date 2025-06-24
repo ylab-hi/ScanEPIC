@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15556565.svg)](https://doi.org/10.5281/zenodo.15556565) [![PEP8](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://www.python.org/dev/peps/pep-0008/) [![License](https://img.shields.io/pypi/l/scanexitronlr)](https://opensource.org/licenses/MIT "License") 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15556565.svg)](https://doi.org/10.5281/zenodo.15556565) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15724292.svg)](https://doi.org/10.5281/zenodo.15724292) [![PEP8](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://www.python.org/dev/peps/pep-0008/) [![License](https://img.shields.io/pypi/l/scanexitronlr)](https://opensource.org/licenses/MIT "License") 
 
 
 # ScanEPIC
@@ -16,29 +16,26 @@ Typical runtime is around ~10 minutes using 4 cores on an average sized RNA-seq 
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.9+
 - Conda (recommended)
 
 ### Install from source
 
+#### Option 1: Simple installation (recommended)
 ```bash
 # Create conda environment
 conda create -n scanepic python=3.9
 conda activate scanepic
 
-# Install core dependencies
-conda install -c conda-forge numpy pandas scipy statsmodels
-conda install -c bioconda pysam gffutils
-conda install -c conda-forge click biopython cython
-
-# Install additional dependencies
-pip install liqa
+# Install build dependencies first
+conda install -c conda-forge cython numpy
 
 # Clone and install ScanEPIC
-git clone git@github.com:ylab-hi/ScanEPIC.git
-cd scanepic
-pip install -e .
+git clone https://github.com/ylab-hi/ScanEPIC.git
+cd ScanEPIC
+pip install .
 ```
+
 
 ## Quick Start
 
@@ -134,6 +131,40 @@ ScanEPIC produces tab-separated files containing:
 | alignment50 | Alignment quality score |
 | rt_repeat | RT-PCR repeat content |
 
+We recommend filtering out exitrons with `alignment50` score >= 0.7. Exitrons with `rt_repeat` >= 6 should also be filtered out unless working with direct RNA-seq data.
+
+For scRNA-seq, ScanEPIC produces a folder with tab-separated files for each BAM file containing:
+
+| Column | Description |
+|--------|-------------|
+| chrom | Chromosome |
+| start | Exitron start position |
+| end | Exitron end position |
+| name | Exitron identifier |
+| region | Genomic region (CDS, 3'UTR, 5'UTR) |
+| ao | Alternative observations (supporting reads) |
+| strand | Strand orientation |
+| gene_symbol | Gene symbol |
+| length | Exitron length |
+| splice_site | Splice site motif |
+| transcript_id | Transcript identifier |
+| pso | Percent spliced-out |
+| dp | Read depth |
+| alignment50 | Alignment quality score |
+| rt_repeat | RT-PCR repeat content |
+| read_total | Total number of reads supporting exitron across all cell types |
+| cell_type | Cell type of called exitron|
+| exitron_mols | Total number of unique molecules supporting the exitron (after deduplicating with UMI tags) |
+| unique_mols | Total number of unique molecules at this locus |
+| exitron_cells_not_found | PSO of exitron in cells not in annotated cell type input TSV|
+| pso | PSO of exitron in `cell_type` (exitron_mols/(unique_mols)) |
+| pairwise_z_test_pvals | Comma separated p-values for each cell type, using z-test to compare each PSO pairwise |
+| meta_pval | Fisher meta-p-value of `pairwise_z_test_pvals`. Good for first glance detection of exitrons that may be dysregulated across cell types|
+
+ScanEPIC in scRNA mode also outputs a splicing summary file `exitron_splicing_summary.tsv`. For each exitron detected in any sample, this file extracts the spliced and non-spliced molecule counts in each sample. This is useful for downstream differential expression analysis (see manuscript). 
+
+Currently, ScanEPIC requires reads have the `CB` and `UB` tags which are generated 
+with the usual scRNA alignment pipelines. 
 
 ## Test Data
 

@@ -49,7 +49,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/scanepic",  # Update with actual repo
-    packages=find_packages(),
+    packages=find_packages(include=['src', 'src.*']),
     ext_modules=cythonize(extensions),
     entry_points={
         'console_scripts': [

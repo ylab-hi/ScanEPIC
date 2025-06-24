@@ -1,3 +1,3 @@
 bam	sample_id	group
-sc_ms_test_normal.bam	BT1293	g1
-sc_ms_test_tumor.bam	BT1A	g1
+sc_test_normal.bam	BT1293	g1
+sc_test_tumor.bam	BT1A	g1
