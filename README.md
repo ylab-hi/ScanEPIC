@@ -2,6 +2,7 @@
 
 
 # ScanEPIC
+<img src="scanepic.svg" width="500" height="400">
 
 ScanEPIC (Scan **E**xitron **P**latform **I**ntegration **C**aller) is a bioinformatics tool for identifying and quantifying exitron splicing events across multiple RNA-seq platforms.
 
