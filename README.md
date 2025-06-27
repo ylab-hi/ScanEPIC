@@ -36,7 +36,29 @@ git clone https://github.com/ylab-hi/ScanEPIC.git
 cd ScanEPIC
 pip install .
 ```
+## Input Requirements
 
+### Required Files
+- **BAM files**: Aligned RNA-seq reads with index (.bai)
+- **Genome FASTA**: Reference genome sequence with index (.fai)
+- **GTF annotation**: Gene annotation file (must be bgzip compressed and tabix indexed using [htslib package](https://www.htslib.org/)). the `gffutils` package will create a database file when ScanEPIC runs for the first time. This may take ~20 minutes but will only need to be done once. Example of fully proccessed GTF file of GENCODE v37 can be found here [https://doi.org/10.5281/zenodo.15724292](https://doi.org/10.5281/zenodo.15724292).
+
+### File Preparation
+```bash
+
+# If needed, sort your GTF annotation
+awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k4,4n -k5,5n"}' in.gtf > out_sorted.gtf
+
+# Compress and index GTF file
+bgzip annotation.gtf
+tabix -p gff annotation.gtf.gz
+
+# Index genome FASTA
+samtools faidx genome.fa
+
+# Index BAM file
+samtools index input.bam
+```
 
 ## Quick Start
 
@@ -96,29 +118,7 @@ scanepic extract single \
     --cores 4
 ```
 
-## Input Requirements
 
-### Required Files
-- **BAM files**: Aligned RNA-seq reads with index (.bai)
-- **Genome FASTA**: Reference genome sequence with index (.fai)
-- **GTF annotation**: Gene annotation file (must be bgzip compressed and tabix indexed). the `gffutils` package will create a database file when ScanEPIC runs for the first time. This may take ~20 minutes but will only need to be done once. 
-
-### File Preparation
-```bash
-
-# If needed, sort your GTF annotation
-awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k4,4n -k5,5n"}' in.gtf > out_sorted.gtf
-
-# Compress and index GTF file
-bgzip annotation.gtf
-tabix -p gff annotation.gtf.gz
-
-# Index genome FASTA
-samtools faidx genome.fa
-
-# Index BAM file
-samtools index input.bam
-```
 
 ## Output Format
 
