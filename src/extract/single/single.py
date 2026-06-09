@@ -40,7 +40,7 @@ from .cython_helpers import find_introns, get_unique_mols
 #=============================================================================
 
 def pretty_print(text):
-    click.echo(click.style(f'[exitrontools extract single -- {strftime("%Y-%m-%d %I:%M:%S %p", localtime())}]',
+    click.echo(click.style(f'[scanepic extract single -- {strftime("%Y-%m-%d %I:%M:%S %p", localtime())}]',
                            fg = 'green') + '\t' + text)
 
 def repeat_test(seq_3, seq_5, kmer_min, kmer_max):

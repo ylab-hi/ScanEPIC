@@ -31,7 +31,7 @@ from Bio import pairwise2, Align
 # ===============================================================================
 
 def pretty_print(text):
-    click.echo(click.style(f'[exitrontools extract short -- {strftime("%Y-%m-%d %I:%M:%S %p", localtime())}]',
+    click.echo(click.style(f'[scanepic extract short -- {strftime("%Y-%m-%d %I:%M:%S %p", localtime())}]',
                            fg = 'green') + '\t' + text)
 
 def repeat_test(seq_3, seq_5, kmer_min, kmer_max):
