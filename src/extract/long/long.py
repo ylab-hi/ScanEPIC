@@ -9,13 +9,11 @@ It includes clustering, realignment, and transcript quantification capabilities.
 """
 __version__ = 'v2.0.0'
 
-import argparse
 import multiprocessing as mp
 import os
 import re
 import subprocess
 import sys
-import traceback
 import gffutils
 import pandas as pd
 import pysam
@@ -24,14 +22,14 @@ from collections import Counter
 from collections import defaultdict
 from itertools import islice
 from time import strftime, localtime
-from Bio import pairwise2, Align
+from Bio import Align
 
 # ===============================================================================
 # Helper Methods
 # ===============================================================================
 
 def pretty_print(text):
-    click.echo(click.style(f'[scanepic extract short -- {strftime("%Y-%m-%d %I:%M:%S %p", localtime())}]',
+    click.echo(click.style(f'[scanepic extract long -- {strftime("%Y-%m-%d %I:%M:%S %p", localtime())}]',
                            fg = 'green') + '\t' + text)
 
 def repeat_test(seq_3, seq_5, kmer_min, kmer_max):
@@ -79,7 +77,7 @@ def find_introns(read_iterator):
         base_position = r.pos
         read_position = 0
         # if cigarstring is * (r.cigartuples == None), unmatched, continue
-        if r.cigartuples == None:
+        if r.cigartuples is None:
             continue
         # iterate through cigar string looking for N
         for i, (tag, nt) in enumerate(r.cigartuples):
@@ -147,8 +145,8 @@ def exitron_caller(bamfile, referencename, chrm, db, mapq=50, jitter=10):
     try:
         with open(blacklist_path) as b:
             b.readline()
-            blacklist = [l.split('\t')[1].rstrip() for l in b]
-    except:
+            blacklist = [line.split('\t')[1].rstrip() for line in b]
+    except OSError:
         blacklist = []
 
     for intron in introns:
@@ -166,12 +164,12 @@ def exitron_caller(bamfile, referencename, chrm, db, mapq=50, jitter=10):
             try:
                 gene_name = feature.gene_name
                 gene_id = feature.gene_id
-            except:
+            except KeyError:
                 try:
                     # Some Arabidopsis GTF filies have only a gene_id
                     gene_name = feature.gene_id
                     gene_id = feature.gene_id
-                except:
+                except KeyError:
                     # This is to catch cases where exon is not associated with any gene
                     continue
             # Use the ends to check for known donors or acceptors
@@ -443,12 +441,12 @@ def filter_exitrons(exitrons, reads, bamfile, genome, db, skip_realign, mapq=50,
                 try:
                     alignment50_lr = aligner.score(intron_seq[:50],
                                                    genome_seq[-50:]) / 50
-                except:
+                except Exception:
                     alignment50_lr = 'NA'
                 try:
                     alignment50_rl = aligner.score(genome_seq[:50],
                                                    intron_seq[-50:]) / 50
-                except:
+                except Exception:
                     alignment50_rl = 'NA'
                 consensus_e['alignment50'] = max(alignment50_lr, alignment50_rl)
 
@@ -481,16 +479,16 @@ def filter_exitrons(exitrons, reads, bamfile, genome, db, skip_realign, mapq=50,
                 if (any([max(0, min(exon_end, i[1]) - max(exon_start, i[0])) > 0
                         for i in bamfile.find_introns([read]).keys()])):
                     pos = [p for p in read.get_aligned_pairs() if (
-                        p[1] != None and exon_start <= p[1] <= exon_end)]
+                        p[1] is not None and exon_start <= p[1] <= exon_end)]
                     try:
-                        start = min(p[0] for p in pos if p[0] != None)
-                        end = max(p[0] for p in pos if p[0] != None)
-                    except:
+                        start = min(p[0] for p in pos if p[0] is not None)
+                        end = max(p[0] for p in pos if p[0] is not None)
+                    except ValueError:
                         continue  # no nt overlap with exon
 
                     try:
                         r_seq = read.seq[start:end].upper()
-                    except:
+                    except Exception:
                         continue  # strangely, sometimes pysam returns None from read.seq
                         # it is a rare bug and I don't know why it happens.
                     if not r_seq:
@@ -651,7 +649,8 @@ def identify_transcripts(exitrons, db, bamfilename, tmp_path, save_abundance, ou
             continue
         t_str = ''
         for t in transcripts:
-            t_str += f'{t},{round(float(ie_slice[ie_slice["IsoformName"] == t]["RelativeAbundance"]), 4)};'
+            abundance = ie_slice.loc[ie_slice['IsoformName'] == t, 'RelativeAbundance'].iloc[0]
+            t_str += f'{t},{round(float(abundance), 4)};'
         e['transcript_id'] = t_str[:-1]  # leave off trailing ;
     return exitrons
 
@@ -742,6 +741,14 @@ def main(tmp_path, input_,
             sys.exit(1)
     bamfile.close()
 
+    # only scan chromosomes that are present in the BAM header
+    with pysam.AlignmentFile(input_, 'rb') as bam_header:
+        chrms = [c for c in chrms if c in bam_header.references]
+    if not chrms:
+        pretty_print(f'ERROR: none of chr1-22, chrX, chrY were found in {input_}. '
+                     'ScanEPIC expects UCSC-style chromosome names (e.g. chr1).')
+        sys.exit(1)
+
     # Check if annotation has a tabix index
     try:
         try:
@@ -749,11 +756,11 @@ def main(tmp_path, input_,
             gtf.close()
         except OSError:
             pretty_print('Building tabix index.')
-            pysam.tabix_index(reference_transcriptome, preset='gtf')
-    except:
+            pysam.tabix_index(reference_transcriptome, preset='gff')
+    except Exception:
         pretty_print(
             f'ERROR: There is a problem reading the annotation file at: {reference_transcriptome}')
-        pretty_print(f'Please make sure to use bgzip to compress your annotation file.')
+        pretty_print('Please make sure to use bgzip to compress your annotation file.')
         sys.exit(1)
 
     # Check if LIQA is available
@@ -845,8 +852,8 @@ def main(tmp_path, input_,
                                       )
             collect_result(output)
     exitrons = []
-    for chrm in results:
-        exitrons.extend(results[chrm])
+    for chrm in chrms:
+        exitrons.extend(results.get(chrm, []))
 
     out_file_name = out
     if not out_file_name:
@@ -883,9 +890,13 @@ def main(tmp_path, input_,
                   'alignment50',
                   'rt_repeat',
                   'reads']
+        if id_:
+            header += ['id']
         # write header
         out.write('\t'.join(header) + '\n')
         for exitron in exitrons:
+            if id_:
+                exitron['id'] = id_
             out.write('\t'.join([str(exitron[column])
                       for column in header]) + '\n')
 

@@ -13,9 +13,7 @@ It processes cell barcodes and UMIs to provide cell-type-specific exitron quanti
 __version__ = 'v2'
 import sys
 import os
-import argparse
 import pysam
-import traceback
 import gffutils
 import multiprocessing as mp
 import pandas as pd
@@ -23,8 +21,6 @@ import warnings
 import click
 import re
 from collections import defaultdict
-from shutil import rmtree
-# TODO replace pairwise2 with Bio.Align.PairwiseAligner
 from Bio import Align
 from statsmodels.stats.proportion import proportions_ztest
 from scipy.stats import combine_pvalues
@@ -233,8 +229,6 @@ def filter_exitrons(exitrons, reads, bamfile, genome, db, cell_types, mapq = 50,
     aligner.open_gap_score = -2
     aligner.extend_gap_score = -1
 
-    genome_fasta = pysam.FastaFile(genome)
-
 
     res = []
 
@@ -302,12 +296,12 @@ def filter_exitrons(exitrons, reads, bamfile, genome, db, cell_types, mapq = 50,
         try:
             alignment50_lr = aligner.score(intron_seq[:50],
                                            genome_seq[-50:]) / 50
-        except:
+        except Exception:
             alignment50_lr = 'NA'
         try:
             alignment50_rl = aligner.score(genome_seq[:50],
                                            intron_seq[-50:]) / 50
-        except:
+        except Exception:
             alignment50_rl = 'NA'
 
         # TODO: make this an argument
@@ -461,6 +455,14 @@ def call_exitrons(bamfilename, chrms, sample_id,
             sys.exit(1)
     bamfile.close()
 
+    # only scan chromosomes that are present in the BAM header
+    with pysam.AlignmentFile(bamfilename, 'rb') as bam_header:
+        chrms = [c for c in chrms if c in bam_header.references]
+    if not chrms:
+        pretty_print(f'ERROR: none of chr1-22, chrX, chrY were found in {bamfilename}. '
+                     'ScanEPIC expects UCSC-style chromosome names (e.g. chr1).')
+        sys.exit(1)
+
     # Begin exitron calling
     global results
     results = {}
@@ -536,9 +538,7 @@ def call_exitrons(bamfilename, chrms, sample_id,
         if id_:
             header += ['id']
         # write header
-        for column in header:
-            out.write(column + '\t')
-        out.write('\n')
+        out.write('\t'.join(header) + '\n')
         out_res = []
         for chrm in chrms:
             # check if chromosome is empty or not
@@ -582,10 +582,10 @@ def main(input_,
         except OSError:
             pretty_print('Building tabix index.')
             pysam.tabix_index(reference_transcriptome, preset='gff')
-    except:
+    except Exception:
         pretty_print(
             f'ERROR: There is a problem reading the annotation file at: {reference_transcriptome}')
-        pretty_print(f'Please make sure to use bgzip to compress your annotation file.')
+        pretty_print('Please make sure to use bgzip to compress your annotation file.')
         sys.exit(1)
 
     # Check for gziped annotation
@@ -620,8 +620,11 @@ def main(input_,
     #=============================================================================
     # For each bamfile in input_, find exitrons
     #=============================================================================
-    bamlist = pd.read_csv(input_, delimiter = '\t') #TODO use input_
+    bamlist = pd.read_csv(input_, delimiter = '\t')
     n_bams = bamlist.shape[0]
+    # BAM paths in the list are relative to the directory of the list file
+    bam_dir = os.path.dirname(input_)
+    all_cell_types = pd.read_csv(cell_types_fn, sep = '\t')
     # let exitrons_all_samples be a dictionory where each key is an exitron
     exitrons_all_samples = defaultdict(list)
     try:
@@ -631,13 +634,11 @@ def main(input_,
     pretty_print(f'Processing {n_bams} samples')
     for i in range(n_bams):
         bam_name = bamlist.iloc[i, 0]
-        bam = os.path.join(os.path.dirname(input_) if os.path.dirname(input_) else '.', bam_name)
+        bam = os.path.join(bam_dir, bam_name)
         sample_id = bamlist.iloc[i, 1]
-        group = bamlist.iloc[i, 2]
 
         # process cell type data
-        cell_types = pd.read_csv(cell_types_fn, sep = '\t')
-        cell_types = cell_types[cell_types['sample_id'] == sample_id]
+        cell_types = all_cell_types[all_cell_types['sample_id'] == sample_id]
 
         called_exitrons = call_exitrons(bam, chrms, sample_id, input_,
                    cell_types,
@@ -659,10 +660,7 @@ def main(input_,
     # For each exitron found in at least one sample, calculate exitron_mols and unique_mol for
     #   each sample (those who have the exitron have already been calculated)
     #=============================================================================
-    pretty_print(f'Preping splicing summary between cell types.')
-
-    # get cell type names
-    cell_type_names = [x for x in cell_types.cell_group.unique() if not pd.isna(x)]
+    pretty_print('Preping splicing summary between cell types.')
 
     # exitrons_mols_by_group is a dict with keys "group".
     # values are dicts with keys  "exitrons name"
@@ -676,6 +674,7 @@ def main(input_,
         for _, row in bamlist.iterrows():
             bam_name = row['bam']
             group = row['group']
+            bam = os.path.join(bam_dir, bam_name)
             called_exitrons = [e for e in exitrons_all_samples[exitron_name] \
                                if e['bam_name'] == bam_name]
             if called_exitrons:
@@ -683,16 +682,16 @@ def main(input_,
                 for exitron in called_exitrons:
                     entry = (exitron['cell_type'], exitron['exitron_mols'], exitron['unique_mols'])
                     exitron_mols_by_group[group][exitron_name].append(entry)
-                    bam = os.path.dirname(input_) + '/' + bam_name
                     res.append([exitron_name, bam, group, entry[0], entry[1], entry[2]])
 
             else:
                 chrm = exitrons_all_samples[exitron_name][0]['chrom']
                 start = exitrons_all_samples[exitron_name][0]['start']
                 end = exitrons_all_samples[exitron_name][0]['end']
-                bam = os.path.join(os.path.dirname(input_) if os.path.dirname(input_) else '.', bam_name)
                 bamfile = pysam.AlignmentFile(bam, 'rb')
-                # for each cell type, get unique mols.
+                # for each cell type of this sample, get unique mols.
+                cell_types = all_cell_types[all_cell_types['sample_id'] == row['sample_id']]
+                cell_type_names = [x for x in cell_types.cell_group.unique() if not pd.isna(x)]
                 for cell_type in cell_type_names:
                     cells_in_type = cell_types[cell_types['cell_group'] == cell_type].cells.unique()
                     unique_mols = get_unique_mols(chrm,
@@ -704,8 +703,7 @@ def main(input_,
                     entry = (cell_type, 0, unique_mols)
                     exitron_mols_by_group[group][exitron_name].append(entry)
                     res.append([exitron_name, bam, group, entry[0], entry[1], entry[2]])
-
-
+                bamfile.close()
 
     #=============================================================================
     # write to file for differential expression analysis using R script
@@ -723,7 +721,7 @@ def main(input_,
                   'spliced_cov',
                   'unspliced_cov']
         out.write('\t'.join(header) + '\n')
-        out.write('\n'.join('\t'.join(map(str, x)) for x in res))
+        out.write(''.join('\t'.join(map(str, x)) + '\n' for x in res))
 
 
 

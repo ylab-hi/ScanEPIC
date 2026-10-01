@@ -10,8 +10,6 @@ CLI Modules structure:
                 singlecell
     tools ->
                 exitron2vcf
-                lrannotate
-                ...
 
 """
 import click
@@ -19,10 +17,6 @@ import sys
 import os
 import traceback
 from shutil import rmtree
-
-
-
-
 
 
 #=============================================================================
@@ -80,8 +74,8 @@ def tools():
               help = 'Add ID column of string in output file.',
               default = None)
 @click.option('-vcf', '--vcf',
-              help = 'Format output as a VCF file.',
-              default = None)
+              help = 'Also write the exitrons as a VCF file (<out>.vcf).',
+              is_flag = True)
 def short(input_,
           genome,
           reference_transcriptome,
@@ -120,7 +114,8 @@ def short(input_,
               help = 'Path to reference transcriptome annotation (GTF/GFF format). Database file will be created if not found.',
               required=True)
 @click.option('-o', '--out',
-              help = 'Output filename.')
+              help = 'Output directory.',
+              required=True)
 @click.option('-c', '--cores',
               help = 'Number of cores for parallel processing. If 0 then no parallel processing is used',
               default = 0)
@@ -128,13 +123,13 @@ def short(input_,
               help = 'Consider only reads with MAPQ >= cutoff',
               default = 50)
 @click.option('-m', '--unique-exitron-mol',
-              help = 'AO cutoff',
+              help = 'Minimum number of unique molecules (UMIs) supporting the exitron',
               default = 2)
 @click.option('-p', '--pso',
               help = 'PSO cutoff',
               default = 0.01)
 @click.option('-al', '--alignment50',
-              help = 'PSO cutoff',
+              help = 'Discard exitrons with alignment50 score >= cutoff',
               default = 0.7)
 @click.option('-id', '--id', 'id_',
               help = 'Add ID column of string in output file.',
@@ -199,10 +194,11 @@ def single(input_,
               help = 'Skip realignment step. We suggest skipping if alignment data is very clean, e.g. HiFi pacbio reads',
               is_flag = True)
 @click.option('-sa', '--save-abundance',
-              help = 'Save transcript abundance information for downstream processing',
+              help = 'Save transcript abundance information for downstream processing. '
+                     'Files are of the form: <out>.isoform.exitrons, <out>.isoform.normals',
               is_flag = True)
 @click.option('-id', '--id', 'id_',
-              help = 'Add ID column of string in output file. Files are of the form: input.isoform.exitrons, input.isoform.normals',
+              help = 'Add ID column of string in output file.',
               default = None)
 def long(input_,
           genome,
@@ -246,11 +242,9 @@ def long(input_,
             sys.stderr.write("User interrupt!")
         else:
             traceback.print_exc()
-        rmtree(tmp_path)
         sys.exit(1)
-
-
-
+    finally:
+        rmtree(tmp_path, ignore_errors=True)
 
 
 ## tools
@@ -275,10 +269,6 @@ def exitron2vcf(input_file, output_vcf, genome, sample_name, compress, index):
     from .tools.exitron2vcf import main as exitron2vcf_main
     exitron2vcf_main(input_file, output_vcf, genome, sample_name, compress, index)
 
-@tools.command()
-@click.option('--test3', default = 2, help = 'cube me')
-def lrannotate(test3):
-    click.echo(test3**3)
 
 if __name__ == '__main__':
     cli()

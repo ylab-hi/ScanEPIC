@@ -134,22 +134,23 @@ def exitron_to_vcf_record(exitron, genome_fasta=None, sample_name='SAMPLE'):
     splice_site = exitron['splice_site']
     gene_symbol = exitron['gene_symbol']
     
-    # Get reference and alternate sequences
+    # Get reference and alternate sequences. An exitron is a deletion, so REF is
+    # the anchor base plus the spliced-out sequence and ALT is the anchor base.
     if genome_fasta:
         try:
-            ref_seq = genome_fasta[chrom][pos-1:pos].upper()
-            alt_seq = genome_fasta[chrom][pos-1:end_pos-1].upper()
+            ref_seq = genome_fasta[chrom][pos-1:end_pos-1].upper()
+            alt_seq = genome_fasta[chrom][pos-1:pos].upper()
         except Exception:
             # Fallback if genome access fails
-            ref_seq = 'N'
-            alt_seq = 'N' * (length + 1)
+            ref_seq = 'N' * (length + 1)
+            alt_seq = 'N'
     else:
-        ref_seq = 'N'
-        alt_seq = 'N' * (length + 1)
+        ref_seq = 'N' * (length + 1)
+        alt_seq = 'N'
     
     # Build INFO field
     info_fields = [
-        f'SVTYPE=DEL',
+        'SVTYPE=DEL',
         f'END={end_pos-1}',
         f'SVLEN=-{length}',
         f'AO={ao}',

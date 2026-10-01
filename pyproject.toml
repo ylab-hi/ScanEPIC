@@ -17,16 +17,17 @@ authors = [
 description = "A tool for identifying exitron splicing events from RNA-seq data"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "pysam>=0.19.0",
@@ -43,8 +44,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "black",
-    "flake8",
+    "ruff",
 ]
 docs = [
     "sphinx",
@@ -69,3 +69,19 @@ zip-safe = false
 
 [tool.setuptools.package-data]
 "src.extract.long" = ["blacklist.tsv"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["build"]
+
+[tool.ruff.lint]
+# pyflakes (F) catches real bugs: undefined names, unused imports/variables.
+# E7/E9 catch syntax errors and questionable comparisons/bare excepts.
+select = ["F", "E7", "E9", "W6"]
+
+[tool.ruff.lint.per-file-ignores]
+# submodules are imported for their side effect of exposing them on the package
+"__init__.py" = ["F401"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

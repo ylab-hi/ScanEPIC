@@ -93,8 +93,8 @@ def exitron_caller(bamfile, referencename, chrm, db, known_introns, mapq=50):
             try:
                 # some entries like 'gene' do not have transcript types
                 # in this case, just continue
-                gene_type = feature.gene_type
-            except:
+                feature.gene_type
+            except KeyError:
                 continue
             # if gene_type != 'protein_coding': continue
             region_type = feature.feature
@@ -219,7 +219,8 @@ def filter_exitrons(exitrons, reads, bamfile, genome, db, mapq=50, pso_min=0.005
     # filter one exitron at a time
     for exitron in exitrons:
         ao = exitron['ao']
-        if ao < ao_min: continue
+        if ao < ao_min:
+            continue
         chrm = exitron['chrom']
         start = exitron['start']
         end = exitron['end']
@@ -265,8 +266,8 @@ def filter_exitrons(exitrons, reads, bamfile, genome, db, mapq=50, pso_min=0.005
 
             if three_prime_exon_r != five_prime_intron_r and five_prime_exon_r != three_prime_intron_r:
                 ao_true += 1
-                if r_anchor_len > max_r_anchor_len: max_r_anchor_len = r_anchor_len
-                if l_anchor_len > max_l_anchor_len: max_l_anchor_len = l_anchor_len
+                max_r_anchor_len = max(max_r_anchor_len, r_anchor_len)
+                max_l_anchor_len = max(max_l_anchor_len, l_anchor_len)
 
         if ao_true == 0 and ao_min > 0:
             exitron['ao_unfiltered'] = ao
@@ -302,12 +303,12 @@ def filter_exitrons(exitrons, reads, bamfile, genome, db, mapq=50, pso_min=0.005
             try:
                 alignment50_lr = aligner.score(intron_seq[:50],
                                                genome_seq[-50:]) / 50
-            except:
+            except Exception:
                 alignment50_lr = 'NA'
             try:
                 alignment50_rl = aligner.score(genome_seq[:50],
                                                intron_seq[-50:]) / 50
-            except:
+            except Exception:
                 alignment50_rl = 'NA'
             exitron['alignment50'] = max(alignment50_lr, alignment50_rl)
 
@@ -399,11 +400,11 @@ def main(input_,
             gtf.close()
         except OSError:
             pretty_print('Building tabix index for GTF file.')
-            pysam.tabix_index(reference_transcriptome, preset='gtf')
-    except:
+            pysam.tabix_index(reference_transcriptome, preset='gff')
+    except Exception:
         pretty_print(
             f'ERROR: There is a problem reading the annotation file at: {reference_transcriptome}')
-        pretty_print(f'Please make sure to use bgzip to compress your annotation file.')
+        pretty_print('Please make sure to use bgzip to compress your annotation file.')
         sys.exit(1)
 
     # Check for gziped annotation
@@ -433,11 +434,19 @@ def main(input_,
               'chr16', 'chr17', 'chr18', 'chr19', 'chr20',
               'chr21', 'chr22', 'chrX', 'chrY']
 
+    # only scan chromosomes that are present in the BAM header
+    with pysam.AlignmentFile(input_, 'rb') as bam_header:
+        chrms = [c for c in chrms if c in bam_header.references]
+    if not chrms:
+        pretty_print(f'ERROR: none of chr1-22, chrX, chrY were found in {input_}. '
+                     'ScanEPIC expects UCSC-style chromosome names (e.g. chr1).')
+        sys.exit(1)
+
     try:
         # prune introns with known donors and acceptors
         with open('introns_v37.obj', 'rb') as p:
             known_introns = pickle.load(p)
-    except:
+    except (OSError, pickle.UnpicklingError):
         known_introns = []
 
     #=============================================================================
@@ -522,9 +531,7 @@ def main(input_,
         if id_:
             header += ['id']
         # write header
-        for column in header:
-            out.write(column + '\t')
-        out.write('\n')
+        out.write('\t'.join(header) + '\n')
         for chrm in chrms:
             # check if chromosome is empty or not
             try:
@@ -547,7 +554,7 @@ def main(input_,
         if vcf:
             out_file_name_vcf = out_file_name + '.vcf'
             pretty_print(
-                f'Printing VCF to {out_file_name}')
+                f'Printing VCF to {out_file_name_vcf}')
             sys.stdout.flush()
             with open(out_file_name_vcf, 'w') as out:
                 vcf_header ='''##fileformat=VCFv4.2
@@ -558,14 +565,15 @@ def main(input_,
 ##ALT=<ID=BND,Description="Translocation">
 ##ALT=<ID=INS,Description="Insertion">
 ##FILTER=<ID=LowQual,Description="PE/SR support below 3 or mapping quality below 20.">
-##INFO=<ID=DP,Number=2,Type=Integer,Description="Total depth of junction">
-##INFO=<ID=SplicedSite,Number=2,Type=String,Description="Splieced site">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total depth of junction">
+##INFO=<ID=SplicedSite,Number=1,Type=String,Description="Splice site motif">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Junction strand">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">
 ##INFO=<ID=AO,Number=1,Type=Integer,Description="Reads support of the exitron">
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
 ##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Length of structural variant">
-##INFO=<ID=PSO,Number=1,Type=Integer,Description="Percent spliced-out">
+##INFO=<ID=PSO,Number=1,Type=Float,Description="Percent spliced-out">
+##INFO=<ID=PSI,Number=1,Type=Float,Description="Percent spliced-in (1 - PSO)">
 ##INFO=<ID=GeneName,Number=1,Type=String,Description="Gene name">
 ##INFO=<ID=GeneID,Number=1,Type=String,Description="Gene ID">
 ##INFO=<ID=MAPQ,Number=1,Type=Integer,Description="Median mapping quality of paired-ends">
@@ -579,8 +587,9 @@ def main(input_,
 ##INFO=<ID=SVMETHOD,Number=1,Type=String,Description="Type of approach used to detect SV">
 ##INFO=<ID=INSLEN,Number=1,Type=Integer,Description="Predicted length of the insertion">
 ##INFO=<ID=HOMLEN,Number=1,Type=Integer,Description="Predicted microhomology length using a max. edit distance of 2">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t{0}
-                '''.format(os.path.splitext(os.path.basename(out_file_name))[0])
+'''.format(os.path.splitext(os.path.basename(out_file_name))[0])
                 # write header
                 out.write(vcf_header)
                 genome_seq = pysam.FastaFile(genome)
@@ -593,8 +602,9 @@ def main(input_,
                                               format(exitron['chrom'],
                                                      exitron['start'],
                                                      exitron['name'],
-                                                     genome_seq[exitron['chrom']][exitron['start'] - 1: exitron['start']],
+                                                     # deletion: REF = anchor base + exitron, ALT = anchor base
                                                      genome_seq[exitron['chrom']][exitron['start'] - 1: exitron['end'] - 1],
+                                                     genome_seq[exitron['chrom']][exitron['start'] - 1: exitron['start']],
                                                      exitron['end'] - 1,
                                                      exitron['ao'],
                                                      exitron['dp'],
